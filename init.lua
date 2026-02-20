@@ -1,21 +1,12 @@
--- ==========================================================================
--- 1. GLOBAL SETTINGS & LEADER KEY
--- ==========================================================================
 vim.g.mapleader = " "
 vim.g.maplocalleader = " "
 
--- ==========================================================================
--- 2. BOOTSTRAP LAZY.NVIM
--- ==========================================================================
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not (vim.uv or vim.loop).fs_stat(lazypath) then
   vim.fn.system({ "git", "clone", "--filter=blob:none", "https://github.com/folke/lazy.nvim.git", "--branch=stable", lazypath })
 end
 vim.opt.rtp:prepend(lazypath)
 
--- ==========================================================================
--- 3. PLUGIN CONFIGURATION
--- ==========================================================================
 require("lazy").setup({
   { "catppuccin/nvim", name = "catppuccin", priority = 1000, 
     config = function()
@@ -44,21 +35,20 @@ require("lazy").setup({
       })
     end 
   },
+  { "stevearc/oil.nvim",
+    dependencies = { "nvim-tree/nvim-web-devicons" },
+    config = function()
+      require("oil").setup({
+        view_options = { show_hidden = true },
+        float = { padding = 2, border = "rounded" },
+      })
+      vim.keymap.set("n", "-", "<CMD>Oil<CR>", { desc = "Open parent directory" })
+    end
+  },
   { "folke/zen-mode.nvim",
     opts = {
-      window = { 
-        width = 85, 
-        options = { 
-          number = false, 
-          relativenumber = false, 
-          signcolumn = "no",
-          foldcolumn = "0",
-        } 
-      },
-      plugins = {
-        options = { enabled = true, laststatus = 0 }, 
-        twilight = { enabled = true },               
-      },
+      window = { width = 85, options = { number = false, relativenumber = false, signcolumn = "no", foldcolumn = "0" } },
+      plugins = { options = { enabled = true, laststatus = 0 }, twilight = { enabled = true } },
     }
   },
   { 'nvim-lualine/lualine.nvim', dependencies = { 'nvim-tree/nvim-web-devicons' },
@@ -67,17 +57,12 @@ require("lazy").setup({
   { "vim-scripts/fountain.vim", ft = "fountain" },
 })
 
--- ==========================================================================
--- 4. THE ULTIMATE LIVE SCREENPLAY RENDERER (V10)
--- ==========================================================================
-
 local ns_id = vim.api.nvim_create_namespace("FountainLive")
 
 local function apply_indent(bufnr)
   if not vim.api.nvim_buf_is_valid(bufnr) then return end
   vim.api.nvim_buf_clear_namespace(bufnr, ns_id, 0, -1)
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-  
   local state = "NORMAL" 
   
   for i, line in ipairs(lines) do
@@ -125,24 +110,15 @@ local function apply_indent(bufnr)
     
     if indent_spaces > 0 then
       local spaces = string.rep(" ", indent_spaces)
-      vim.api.nvim_buf_set_extmark(bufnr, ns_id, i-1, 0, { 
-        virt_text = {{spaces, "None"}}, 
-        virt_text_pos = "inline" 
-      })
+      vim.api.nvim_buf_set_extmark(bufnr, ns_id, i-1, 0, { virt_text = {{spaces, "None"}}, virt_text_pos = "inline" })
     end
     
     ::continue::
   end
 end
 
--- ==========================================================================
--- 5. DYNAMIC ENGINE (Margins & Character Autocomplete)
--- ==========================================================================
-
--- 5A. Margin Logic
 local function update_fountain_margins()
   local row = vim.fn.line('.') - 1
-  
   local block_start = row
   while block_start > 0 do
     local prev = vim.api.nvim_buf_get_lines(0, block_start - 1, block_start, false)[1]
@@ -152,7 +128,6 @@ local function update_fountain_margins()
   
   local state = "NORMAL"
   local current_line_state = "NORMAL"
-  
   local lines = vim.api.nvim_buf_get_lines(0, block_start, row + 1, false)
   for i, l in ipairs(lines) do
     l = l:gsub("^%s*", ""):gsub("%s*$", "")
@@ -193,24 +168,17 @@ local function update_fountain_margins()
   end
 end
 
--- 5B. The Native Character Autocomplete Database
 _G.FountainCharComplete = function(findstart, base)
   if findstart == 1 then
     local line = vim.api.nvim_get_current_line()
     local col = vim.fn.col('.') - 1
     local before = line:sub(1, col)
     local start_idx = before:find("[A-Z0-9]+$")
-    if start_idx then
-      return start_idx - 1 -- Return 0-indexed position for Neovim's omnifunc
-    else
-      return col
-    end
+    return start_idx and (start_idx - 1) or col
   else
-    local chars = {}
-    local seen = {}
+    local chars, seen = {}, {}
     local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
     
-    -- Scrape the document for Character names
     for _, l in ipairs(lines) do
       local clean = l:gsub("^%s*", ""):gsub("%s*$", "")
       if clean ~= "" and clean:match("^[A-Z][A-Z%s%d%p]*$") and not clean:match("^[IE][NX]T%.") and not clean:match("TO:$") and not clean:match("^FADE ") and not clean:match("^>") then
@@ -221,7 +189,6 @@ _G.FountainCharComplete = function(findstart, base)
       end
     end
     
-    -- Filter results based on what you typed
     local res = {}
     for _, c in ipairs(chars) do
       if c.word:sub(1, #base) == base then
@@ -232,13 +199,9 @@ _G.FountainCharComplete = function(findstart, base)
   end
 end
 
--- ==========================================================================
--- 6. AUTOCOMMANDS & KEYMAPS
--- ==========================================================================
 vim.opt.termguicolors = true
 vim.filetype.add({ extension = { fountain = "fountain" } })
 
--- Typewriter Mode Toggle & Intelligent Dynamic Padding
 local default_scrolloff = 8
 local typewriter_group = vim.api.nvim_create_augroup("TypewriterMode", { clear = true })
 
@@ -248,8 +211,7 @@ vim.api.nvim_create_user_command("TypewriterToggle", function()
     vim.api.nvim_clear_autocmds({ group = typewriter_group })
     
     local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
-    local first = 1
-    local last = #lines
+    local first, last = 1, #lines
     while first <= #lines and lines[first] == "" do first = first + 1 end
     while last >= 1 and lines[last] == "" do last = last - 1 end
     if first > last then
@@ -258,7 +220,6 @@ vim.api.nvim_create_user_command("TypewriterToggle", function()
       if last < #lines then vim.api.nvim_buf_set_lines(0, last, -1, false, {}) end
       if first > 1 then vim.api.nvim_buf_set_lines(0, 0, first - 1, false, {}) end
     end
-    print("Typewriter mode OFF")
   else
     vim.o.scrolloff = 999
     
@@ -276,11 +237,8 @@ vim.api.nvim_create_user_command("TypewriterToggle", function()
         if top_padding == total_lines then top_padding = total_lines - 1 end
         
         local cursor_row = vim.fn.line('.')
-        local real_cursor_row = cursor_row - top_padding
-        if real_cursor_row < 1 then real_cursor_row = 1 end
-        
-        local desired_top = half_screen - real_cursor_row
-        if desired_top < 0 then desired_top = 0 end
+        local real_cursor_row = math.max(1, cursor_row - top_padding)
+        local desired_top = math.max(0, half_screen - real_cursor_row)
         
         if top_padding < desired_top then
           local add = {} for _=1, (desired_top - top_padding) do table.insert(add, "") end
@@ -297,11 +255,8 @@ vim.api.nvim_create_user_command("TypewriterToggle", function()
         end
         if bottom_padding == total_lines then bottom_padding = total_lines - 1 end
         
-        local real_lines_below = total_lines - bottom_padding - cursor_row
-        if real_lines_below < 0 then real_lines_below = 0 end
-        
-        local desired_bottom = half_screen - real_lines_below
-        if desired_bottom < 0 then desired_bottom = 0 end
+        local real_lines_below = math.max(0, total_lines - bottom_padding - cursor_row)
+        local desired_bottom = math.max(0, half_screen - real_lines_below)
         
         if bottom_padding < desired_bottom then
           local add = {} for _=1, (desired_bottom - bottom_padding) do table.insert(add, "") end
@@ -314,12 +269,11 @@ vim.api.nvim_create_user_command("TypewriterToggle", function()
     
     vim.cmd("doautocmd CursorMoved")
     vim.cmd("normal! zz")
-    print("Typewriter mode ON")
   end
 end, {})
 
-vim.keymap.set("n", "<leader>tw", ":TypewriterToggle<CR>", { desc = "Toggle Typewriter Mode" })
-vim.keymap.set("n", "<leader>f", "gqip", { desc = "Fix paragraph wrap" })
+vim.keymap.set("n", "<leader>tw", ":TypewriterToggle<CR>")
+vim.keymap.set("n", "<leader>f", "gqip")
 
 vim.api.nvim_create_user_command("FountainFormat", function()
   local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
@@ -393,12 +347,8 @@ vim.api.nvim_create_user_command("FountainFormat", function()
   end
   
   vim.api.nvim_buf_set_lines(0, 0, -1, false, formatted_lines)
-  print("Imported Screenplay Formatted!")
 end, {})
 
--- ==========================================================================
--- TITLE PAGE METADATA COMMANDS
--- ==========================================================================
 local metadata_commands = {
   FountainTitle   = "Title",
   FountainCredits = "Credit",
@@ -409,14 +359,8 @@ local metadata_commands = {
 
 for cmd_name, tag in pairs(metadata_commands) do
   vim.api.nvim_create_user_command(cmd_name, function(opts)
-    -- Format the string (e.g., "Title: NIRMAL")
-    local line_to_insert = tag .. ": " .. opts.args
-    
-    -- Inject it at the very top of the document (line 0)
-    vim.api.nvim_buf_set_lines(0, 0, 0, false, { line_to_insert })
-    
-    print("Added " .. tag .. " to Title Page!")
-  end, { nargs = "+" }) -- "+" means the command requires at least one word as an argument
+    vim.api.nvim_buf_set_lines(0, 0, 0, false, { tag .. ": " .. opts.args })
+  end, { nargs = "+" })
 end
 
 vim.api.nvim_create_autocmd("FileType", {
@@ -429,26 +373,20 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.opt_local.breakindent = true 
     vim.opt_local.formatoptions:append("t") 
     
-    -- Configure Neovim's Native UI Drop-Down Menu
     vim.bo[bufnr].omnifunc = "v:lua.FountainCharComplete"
     vim.opt_local.completeopt = { "menuone", "noselect", "noinsert" }
     
     apply_indent(bufnr)
 
-    -- Auto-Margin Engine
     vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI" }, {
       buffer = bufnr,
       callback = function() vim.schedule(update_fountain_margins) end
     })
 
-    -- Live Indentation Render
     vim.api.nvim_buf_attach(bufnr, false, {
-      on_lines = function() 
-        vim.schedule(function() apply_indent(bufnr) end) 
-      end
+      on_lines = function() vim.schedule(function() apply_indent(bufnr) end) end
     })
     
-    -- Trigger Dropdown intelligently while typing
     vim.api.nvim_create_autocmd("TextChangedI", {
       buffer = bufnr,
       callback = function()
@@ -456,7 +394,6 @@ vim.api.nvim_create_autocmd("FileType", {
         local col = vim.fn.col('.') - 1
         local before_cursor = line:sub(1, col)
         
-        -- ONLY trigger if you are starting a line with uppercase letters
         if before_cursor:match("^%s*[A-Z]+$") then
           if vim.fn.pumvisible() == 0 then
             vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-x><C-o>", true, false, true), "n", true)
@@ -465,7 +402,6 @@ vim.api.nvim_create_autocmd("FileType", {
       end
     })
 
-    -- Map ENTER key to seamlessly select the character from the dropdown
     vim.keymap.set("i", "<CR>", function()
       if vim.fn.pumvisible() == 1 then
         return vim.api.nvim_replace_termcodes("<C-y>", true, false, true)
@@ -507,9 +443,7 @@ vim.api.nvim_create_autocmd("FileType", {
       vim.cmd("write")
       
       local cmd = string.format("afterwriting --source %s --pdf %s --overwrite 2>&1", vim.fn.shellescape(input), vim.fn.shellescape(output))
-      print("Exporting Clean Screenplay...")
       vim.fn.system(cmd)
-      print("Success! PDF created.")
     end, { buffer = bufnr })
   end,
 })

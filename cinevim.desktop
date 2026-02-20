@@ -1,9 +1,0 @@
-[Desktop Entry]
-Name=CineNvim
-GenericName=Screenplay Editor
-Comment=Terminal-based screenplay studio for the modern auteur
-Exec=cinenvim %f
-Icon=accessories-text-editor
-Terminal=true
-Type=Application
-Categories=Office;TextEditor;
