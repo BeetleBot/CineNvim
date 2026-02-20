@@ -21,7 +21,7 @@ To use this setup, you will need:
 
 1. **Neovim** (v0.9.0 or higher)
 2. **Git** (to automatically download the plugins)
-3. **[afterwriting](https://www.google.com/search?q=https://github.com/ifrost/afterwriting-labs/blob/master/docs/clients.md)** (Optional, but required if you want to export your scripts to PDF).
+3. **[afterwriting](https://github.com/ifrost/afterwriting-labs/blob/master/docs/clients.md)** (Optional, but required if you want to export your scripts to PDF).
 
 ## Installation
 
