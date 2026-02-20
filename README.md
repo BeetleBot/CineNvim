@@ -1,5 +1,3 @@
-# CineNvim
-
 # CineNvim 🎬
 
 **CineNvim** is a highly specialized Neovim configuration designed specifically for screenwriters. It turns your terminal into a distraction-free, fully-featured screenplay studio using the [Fountain](https://fountain.io/) plain-text markup language.
