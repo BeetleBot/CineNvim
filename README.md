@@ -1,5 +1,7 @@
 # CineNvim 🎬
 
+I WOREKED ON IT FOR SOMETIME AND I DID NOT LIKE THE WAY IT WAS GOING. SO I GAVE UP COMPLETELY AND STARTED DEVELOPING MY OWN TERMINAL BASED FOUNTAIN EDITOR [FOUNT](https://github.com/BeetleBot/FountCLI/), CHECK THAT OUT. THIS REPO IS ARCHIVED AND NOT USABLE.
+
 **CineNvim** is a highly specialized Neovim configuration designed specifically for screenwriters. It turns your terminal into a distraction-free, fully-featured screenplay studio using the [Fountain](https://fountain.io/) plain-text markup language.
 
 **⚠️ Note:** This is *not* a standalone application. It is a single `init.lua` file that you can use as your Neovim configuration.
